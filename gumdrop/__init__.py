@@ -10,5 +10,6 @@ from .cartridge import Cartridge
 from .session import Session
 from .identity import Identity
 from .memory import MemoryStore
+from .pipeline import Pipeline, Probe
 
-__all__ = ["Cartridge", "Session", "Identity", "MemoryStore"]
+__all__ = ["Cartridge", "Session", "Identity", "MemoryStore", "Pipeline", "Probe"]

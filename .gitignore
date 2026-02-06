@@ -39,3 +39,7 @@ htmlcov/
 # Secrets
 .env
 *.key
+pipeline_log*
+vacuum_*.jsonl
+*.gdp
+*.memory

@@ -10,6 +10,7 @@ from .cartridge import Cartridge
 from .providers.base import BaseProvider
 from .providers.anthropic import AnthropicProvider
 from .providers.openai import OpenAIProvider
+from .providers.lmstudio import LMStudioProvider
 
 
 PROVIDER_MAP = {
@@ -17,6 +18,8 @@ PROVIDER_MAP = {
     "claude": AnthropicProvider,
     "openai": OpenAIProvider,
     "gpt": OpenAIProvider,
+    "lmstudio": LMStudioProvider,
+    "local": LMStudioProvider,
 }
 
 

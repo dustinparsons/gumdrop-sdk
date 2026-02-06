@@ -3,5 +3,6 @@
 from .base import BaseProvider
 from .anthropic import AnthropicProvider
 from .openai import OpenAIProvider
+from .lmstudio import LMStudioProvider
 
-__all__ = ["BaseProvider", "AnthropicProvider", "OpenAIProvider"]
+__all__ = ["BaseProvider", "AnthropicProvider", "OpenAIProvider", "LMStudioProvider"]
