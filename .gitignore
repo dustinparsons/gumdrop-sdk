@@ -43,3 +43,4 @@ pipeline_log*
 vacuum_*.jsonl
 *.gdp
 *.memory
+output/
