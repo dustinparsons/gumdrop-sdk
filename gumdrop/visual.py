@@ -287,8 +287,8 @@ def render_ribbon_panel(
     traits: Dict[str, float],
     name: str,
     owner_hash: str = "",
-    width: int = 300,
-    height: int = 400,
+    width: int = 320,
+    height: int = 440,
     perspective: bool = True,
 ) -> str:
     """
@@ -305,108 +305,96 @@ def render_ribbon_panel(
     """
     sorted_traits = sorted(traits.items(), key=lambda x: -x[1])
     
-    ribbon_area_w = width - 60
-    ribbon_area_h = height - 100
-    start_y = 50
-    
-    # Calculate ribbon heights proportional to value
-    total_value = sum(v for _, v in sorted_traits) or 1
+    ribbon_area_w = width - 80
+    start_y = 60
+    ribbon_h = 32  # fixed height — cleaner, more uniform
+    gap = 6
     
     parts = []
     parts.append(f'<svg xmlns="http://www.w3.org/2000/svg" width="{width}" height="{height}" viewBox="0 0 {width} {height}">')
     
     # Dark background panel
-    parts.append(f'<rect width="{width}" height="{height}" fill="#0a0a0a" rx="8"/>')
+    parts.append(f'<rect width="{width}" height="{height}" fill="#0c0c0c" rx="8"/>')
     
-    # Panel border (subtle)
-    parts.append(f'<rect x="4" y="4" width="{width-8}" height="{height-8}" '
-                 f'fill="none" stroke="#222" stroke-width="1" rx="6"/>')
+    # Subtle inner border
+    parts.append(f'<rect x="6" y="6" width="{width-12}" height="{height-12}" '
+                 f'fill="none" stroke="#1a1a1a" stroke-width="1" rx="5"/>')
     
     # Name header
     parts.append(
-        f'<text x="{width//2}" y="30" font-family="monospace" font-size="12" '
-        f'fill="#666" text-anchor="middle" letter-spacing="4">'
+        f'<text x="{width//2}" y="36" font-family="monospace" font-size="13" '
+        f'fill="#888" text-anchor="middle" letter-spacing="6">'
         f'{name.upper()}</text>'
     )
     
     # Render ribbons
     y_cursor = start_y
-    seed = _seed_bytes(name, owner_hash)
+    label_x = 40  # left margin for trait labels
     
     for i, (trait, value) in enumerate(sorted_traits):
         if value < 0.05:
             continue
         
-        # Ribbon dimensions
-        ribbon_h = max(12, int((value / total_value) * ribbon_area_h * 1.5))
-        ribbon_h = min(ribbon_h, 60)  # cap height
-        ribbon_w = int(30 + value * (ribbon_area_w - 30))  # width from value
-        ribbon_x = (width - ribbon_w) // 2
+        # Ribbon width proportional to value, anchored left
+        ribbon_w = int(value * ribbon_area_w)
+        ribbon_w = max(20, ribbon_w)
+        ribbon_x = label_x
         
         # Color from trait
         hue = RIBBON_HUES.get(trait, 180)
-        sat = 0.4 + abs(value - 0.5) * 0.8
-        light = 0.3 + value * 0.25
+        sat = 0.5 + abs(value - 0.5) * 0.6
+        light = 0.35 + value * 0.2
         
         color = hsl_to_hex(hue, sat, light)
-        color_light = hsl_to_hex(hue, sat * 0.8, light + 0.1)
-        color_dark = hsl_to_hex(hue, sat, light - 0.1)
-        
-        # 3D perspective skew (subtle)
-        if perspective:
-            skew_x = (i - len(sorted_traits) / 2) * 0.3
-            transform = f'transform="skewX({skew_x})"'
-        else:
-            transform = ""
-        
-        # Ribbon body
-        parts.append(f'<g {transform}>')
+        color_light = hsl_to_hex(hue, sat * 0.7, light + 0.15)
+        color_dark = hsl_to_hex(hue, sat, light - 0.08)
         
         # Shadow
         parts.append(
-            f'<rect x="{ribbon_x + 2}" y="{y_cursor + 2}" '
+            f'<rect x="{ribbon_x + 1}" y="{y_cursor + 1}" '
             f'width="{ribbon_w}" height="{ribbon_h}" '
-            f'fill="#000" opacity="0.3" rx="2"/>'
+            f'fill="#000" opacity="0.4" rx="3"/>'
         )
         
-        # Main ribbon
+        # Main ribbon body
         parts.append(
             f'<rect x="{ribbon_x}" y="{y_cursor}" '
             f'width="{ribbon_w}" height="{ribbon_h}" '
-            f'fill="{color}" rx="2"/>'
+            f'fill="{color}" rx="3"/>'
         )
         
-        # Highlight stripe (top edge)
+        # Satin sheen (gradient highlight on top half)
         parts.append(
             f'<rect x="{ribbon_x}" y="{y_cursor}" '
-            f'width="{ribbon_w}" height="3" '
-            f'fill="{color_light}" rx="1" opacity="0.6"/>'
+            f'width="{ribbon_w}" height="{ribbon_h // 2}" '
+            f'fill="{color_light}" opacity="0.2" rx="3"/>'
         )
         
-        # Trait label (on ribbon if wide enough)
-        if ribbon_w > 100 and ribbon_h > 16:
-            label = trait[:3].upper()
-            val_str = f"{value:.1f}"
+        # Trait name — right of the ribbon end
+        trait_label = trait.capitalize()
+        parts.append(
+            f'<text x="{ribbon_x + ribbon_w + 10}" y="{y_cursor + ribbon_h//2 + 4}" '
+            f'font-family="monospace" font-size="10" fill="#555">'
+            f'{trait_label}</text>'
+        )
+        
+        # Value on the ribbon (right-aligned)
+        if ribbon_w > 40:
+            val_pct = f"{int(value * 100)}"
             parts.append(
-                f'<text x="{ribbon_x + 10}" y="{y_cursor + ribbon_h//2 + 4}" '
+                f'<text x="{ribbon_x + ribbon_w - 8}" y="{y_cursor + ribbon_h//2 + 4}" '
                 f'font-family="monospace" font-size="10" fill="{color_light}" '
-                f'opacity="0.8">{label}</text>'
-            )
-            parts.append(
-                f'<text x="{ribbon_x + ribbon_w - 10}" y="{y_cursor + ribbon_h//2 + 4}" '
-                f'font-family="monospace" font-size="9" fill="{color_light}" '
-                f'text-anchor="end" opacity="0.6">{val_str}</text>'
+                f'text-anchor="end" opacity="0.7">{val_pct}</text>'
             )
         
-        parts.append('</g>')
-        
-        y_cursor += ribbon_h + 4  # gap between ribbons
+        y_cursor += ribbon_h + gap
     
     # Hash footer
     short_hash = owner_hash[:8] if owner_hash else "00000000"
     parts.append(
-        f'<text x="{width//2}" y="{height - 16}" font-family="monospace" '
-        f'font-size="9" fill="#444" text-anchor="middle">{short_hash}</text>'
+        f'<text x="{width//2}" y="{height - 18}" font-family="monospace" '
+        f'font-size="9" fill="#333" text-anchor="middle" letter-spacing="2">'
+        f'{short_hash}</text>'
     )
     
     parts.append('</svg>')

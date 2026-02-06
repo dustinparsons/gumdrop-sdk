@@ -85,6 +85,7 @@ class Cartridge:
         self._filepath = Path(filepath) if filepath else None
         self._identity = Identity.from_dict(data.identity, data.personality)
         self._memory: Optional[MemoryStore] = None
+        self._signature: Optional[Dict] = None
         self._dirty = False
     
     @classmethod
@@ -151,8 +152,59 @@ class Cartridge:
         data.auth["last_accessed"] = datetime.now(timezone.utc).isoformat()
         
         cart = cls(data, filepath)
+        
+        # Load signature if present
+        cart._signature = raw.get("signature", None)
+        
         return cart
     
+    def sign(self, keypair) -> "Cartridge":
+        """
+        Sign the cartridge with a keypair.
+        
+        The signature covers identity, personality, and directives.
+        Memory is NOT signed (it changes over time).
+        The public key becomes part of the cartridge — it's what
+        generates the IC panel visual.
+        
+        Usage:
+            from gumdrop.keyring import Keyring
+            kr = Keyring()
+            kp = kr.generate()
+            cart.sign(kp).save("signed.gdp")
+        """
+        from .keyring import Signer
+        sig_block = Signer.sign(asdict(self._data), keypair)
+        self._data.auth["owner_hash"] = keypair.fingerprint
+        self._data.auth["public_key"] = keypair.public_key.hex()
+        self._signature = sig_block
+        self._dirty = True
+        return self  # chainable
+    
+    def verify(self, keypair=None) -> bool:
+        """
+        Verify the cartridge signature.
+        
+        Without keypair: structural check only.
+        With keypair: full cryptographic verification.
+        """
+        if not hasattr(self, "_signature") or not self._signature:
+            return False
+        from .keyring import Signer
+        if keypair:
+            return Signer.verify_with_key(asdict(self._data), self._signature, keypair)
+        return Signer.verify(asdict(self._data), self._signature)
+    
+    @property
+    def is_signed(self) -> bool:
+        """Check if this cartridge has been signed."""
+        return hasattr(self, "_signature") and bool(self._signature)
+    
+    @property
+    def public_key_hex(self) -> str:
+        """Get the public key if signed, or empty string."""
+        return self._data.auth.get("public_key", "")
+
     def save(self, filepath: Optional[str | Path] = None):
         """Save cartridge to a .gdp file."""
         target = Path(filepath) if filepath else self._filepath
@@ -166,8 +218,14 @@ class Cartridge:
         if not self._data.memory.get("path"):
             self._data.memory["path"] = str(target.with_suffix(".memory"))
         
+        output = asdict(self._data)
+        
+        # Include signature if present
+        if hasattr(self, "_signature") and self._signature:
+            output["signature"] = self._signature
+        
         with open(target, "w") as f:
-            json.dump(asdict(self._data), f, indent=2)
+            json.dump(output, f, indent=2)
         
         # Save memory if loaded
         if self._memory:
